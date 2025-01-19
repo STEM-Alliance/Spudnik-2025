@@ -7,11 +7,13 @@ package frc.robot.subsystems;
 import java.util.List;
 
 import com.ctre.phoenix6.hardware.Pigeon2;
-//import com.kauailabs.navx.frc.AHRS;
 import com.pathplanner.lib.auto.AutoBuilder;
 import com.pathplanner.lib.auto.NamedCommands;
 //import com.pathplanner.lib.commands.FollowPathHolonomic;
 import com.pathplanner.lib.commands.PathPlannerAuto;
+import com.pathplanner.lib.config.PIDConstants;
+import com.pathplanner.lib.config.RobotConfig;
+import com.pathplanner.lib.controllers.PPHolonomicDriveController;
 import com.pathplanner.lib.path.GoalEndState;
 import com.pathplanner.lib.path.PathConstraints;
 import com.pathplanner.lib.path.PathPlannerPath;
@@ -38,9 +40,10 @@ import edu.wpi.first.wpilibj2.command.SubsystemBase;
 import frc.robot.Constants;
 import frc.robot.Constants.DriveConstants;
 import frc.robot.Constants.FieldConstants;
+import frc.robot.Constants.PathPlannerConstants;
 // import frc.robot.Constants.PathPlannerConstants;
 import frc.robot.Constants.SwerveModuleConstants;
-import frc.robot.Robot; 
+import frc.robot.Robot;
 
 public class SwerveSubsystem extends SubsystemBase {
     SwerveModule frontLeft = new SwerveModule(SwerveModuleConstants.FL_STEER_ID, SwerveModuleConstants.FL_DRIVE_ID,
@@ -63,17 +66,19 @@ public class SwerveSubsystem extends SubsystemBase {
             SwerveModuleConstants.BL_ABSOLUTE_ENCODER_REVERSED,
             SwerveModuleConstants.BL_MOTOR_REVERSED);
 
-    public enum RotationStyle {
-        Driver,
-        AutoSpeaker,
-        AutoShuttle
-    }
+    /*
+     * feature for later
+     * public enum RotationStyle {
+     * Driver,
+     * AutoSpeaker,
+     * AutoShuttle
+     * }
+     * 
+     * private RotationStyle rotationStyle = RotationStyle.Driver;
+     */
 
-    private RotationStyle rotationStyle = RotationStyle.Driver;
-
-    // public final AHRS navX = new AHRS(SPI.Port.kMXP);
     public final Pigeon2 pigeon = new Pigeon2(Constants.SwerveModuleConstants.PIGEON_ID);
-    private double navxSim;
+    private double pigeonSim;
 
     private ChassisSpeeds lastChassisSpeeds = new ChassisSpeeds();
 
@@ -87,33 +92,45 @@ public class SwerveSubsystem extends SubsystemBase {
             getModulePositions(), new Pose2d());
 
     public SwerveSubsystem() {
-        setHeading(-90);
-/*
-        // --------- Path Planner Init ---------- \\
+        RobotConfig config = null;
+        try {
+            config = RobotConfig.fromGUISettings();
+        } catch (Exception e) {
+            // Handle exception as needed
+            e.printStackTrace();
+        }
 
-        AutoBuilder.configureHolonomic(
+        //sets the heading when the robot boots up
+        setHeading(-90); // TO DO: Change if needed
+
+        // Configure AutoBuilder last
+        AutoBuilder.configure(
                 this::getPose, // Robot pose supplier
                 this::resetOdometry, // Method to reset odometry (will be called if your auto has a starting pose)
                 this::getChassisSpeeds, // ChassisSpeeds supplier. MUST BE ROBOT RELATIVE
-                this::setChassisSpeedsAUTO, // Method that will drive the robot given ROBOT RELATIVE ChassisSpeeds
-                PathPlannerConstants.HOLONOMIC_FOLLOWER_CONFIG,
+                (speeds, feedforwards) -> setChassisSpeedsAUTO(speeds), // Method that will drive the robot given ROBOT
+                                                                        // RELATIVE ChassisSpeeds. Also optionally
+                                                                        // outputs individual module feedforwards
+                new PPHolonomicDriveController( // PPHolonomicController is the built in path following controller for
+                                                // holonomic drive trains
+                        PathPlannerConstants.TRANSLATION_PID,
+                        PathPlannerConstants.ROTATION_PID),
+                config, // The robot configuration
                 () -> {
                     // Boolean supplier that controls when the path will be mirrored for the red
                     // alliance
                     // This will flip the path being followed to the red side of the field.
                     // THE ORIGIN WILL REMAIN ON THE BLUE SIDE
+
                     var alliance = DriverStation.getAlliance();
                     if (alliance.isPresent()) {
                         return alliance.get() == DriverStation.Alliance.Red;
                     }
-
                     return false;
-
                 },
                 this // Reference to this subsystem to set requirements
         );
-*/
-        NamedCommands.registerCommand("namedCommand", new PrintCommand("Ran namedCommand"));
+
     }
 
     @Override
@@ -126,9 +143,8 @@ public class SwerveSubsystem extends SubsystemBase {
             isalliancereset = true;
         }
 
-
         odometry.update(getRotation2d(), getModulePositions());
-        
+
         field.setRobotPose(getPose());
 
         SmartDashboard.putData("Field", field);
@@ -143,18 +159,22 @@ public class SwerveSubsystem extends SubsystemBase {
                 backRight.getModuleState().angle.getDegrees() + 90, -backRight.getModuleState().speedMetersPerSecond
         });
     }
-
+    /**
+     * kljkldkl
+     */
     public void zeroHeading() {
         setHeading(0);
     }
 
+    /**
+     * 
+     * @param deg
+     */
     public void setHeading(double deg) {
         if (Robot.isSimulation()) {
-            navxSim = Units.degreesToRadians(deg);
+            pigeonSim = Units.degreesToRadians(deg);
         }
-        // navX.reset();
-        // navX.setAngleAdjustment(deg);
-
+ 
         double error = deg - pigeon.getAngle();
         double new_adjustment = pigeon.getAngle() + error;
         pigeon.setYaw(new_adjustment);
@@ -176,7 +196,7 @@ public class SwerveSubsystem extends SubsystemBase {
     }
 
     public double getHeading() {
-        return Robot.isSimulation() ? -navxSim : Units.degreesToRadians(Math.IEEEremainder(pigeon.getAngle(), 360));
+        return Robot.isSimulation() ? -pigeonSim : Units.degreesToRadians(Math.IEEEremainder(pigeon.getAngle(), 360));
     }
 
     public Rotation2d getRotation2d() {
@@ -248,72 +268,82 @@ public class SwerveSubsystem extends SubsystemBase {
         frontRight.simulate_step();
         backLeft.simulate_step();
         backRight.simulate_step();
-        navxSim += 0.02 * lastChassisSpeeds.omegaRadiansPerSecond;
+        pigeonSim += 0.02 * lastChassisSpeeds.omegaRadiansPerSecond;
     }
 
-    public RotationStyle getRotationStyle() {
-        return rotationStyle;
-    }
+    /*
+     * feature for later
+     * public RotationStyle getRotationStyle() {
+     * return rotationStyle;
+     * }
+     * 
+     * public void setRotationStyle(RotationStyle style) {
+     * rotationStyle = style;
+     * }
+     */
 
-    public void setRotationStyle(RotationStyle style) {
-        rotationStyle = style;
-    }
-/* 
-    // ---------- Path Planner Methods ---------- \\
-
-    public Command loadPath(String name) {
-        return new PathPlannerAuto(name);
-    }
-
-    public Command followPathCommand(String pathName) {
-        PathPlannerPath path = PathPlannerPath.fromPathFile(pathName);
-
-        return new FollowPathHolonomic(
-                path,
-                this::getPose, // Robot pose supplier
-                this::getChassisSpeeds, // ChassisSpeeds supplier. MUST BE ROBOT RELATIVE
-                this::setChassisSpeedsAUTO, // Method that will drive the robot given ROBOT RELATIVE ChassisSpeeds
-                new HolonomicPathFollowerConfig( // HolonomicPathFollowerConfig, this should likely live in your
-                                                 // Constants class
-                        PathPlannerConstants.TRANSLATION_PID, // Translation PID constants
-                        PathPlannerConstants.ROTATION_PID, // Rotation PID constants
-                        DriveConstants.MAX_MODULE_VELOCITY, // Max module speed, in m/s
-                        DriveConstants.DRIVE_BASE_RADIUS, // Drive base radius in meters. Distance from robot center to
-                                                          // furthest module.
-                        new ReplanningConfig() // Default path replanning config. See the API for the options here
-                ),
-                () -> {
-                    // Boolean supplier that controls when the path will be mirrored for the red
-                    // alliance
-                    // This will flip the path being followed to the red side of the field.
-                    // THE ORIGIN WILL REMAIN ON THE BLUE SIDE
-
-                    var alliance = DriverStation.getAlliance();
-                    if (alliance.isPresent()) {
-                        return alliance.get() == DriverStation.Alliance.Red;
-                    }
-                    return false;
-                },
-                this // Reference to this subsystem to set requirements
-        );
-    }
-
-    public PathPlannerPath generateOTFPath(Translation2d... pathPoints) {
-        // Create the path using the bezier points created above
-        PathPlannerPath path = new PathPlannerPath(
-                List.of(pathPoints),
-                new PathConstraints(3.0, 3.0, 2 * Math.PI, 4 * Math.PI), // The constraints for this path. If using a
-                                                                         // differential drivetrain, the angular
-                                                                         // constraints have no effect.
-                new GoalEndState(0.0, Rotation2d.fromDegrees(-90)) // Goal end state. You can set a holonomic rotation
-                                                                   // here. If using a differential drivetrain, the
-                                                                   // rotation will have no effect.
-        );
-
-        // Prevent the path from being flipped if the coordinates are already correct
-        path.preventFlipping = true;
-
-        return path;
-    }
-*/
+    /*
+     * // ---------- Path Planner Methods ---------- \\
+     * 
+     * public Command loadPath(String name) {
+     * return new PathPlannerAuto(name);
+     * }
+     * 
+     * public Command followPathCommand(String pathName) {
+     * PathPlannerPath path = PathPlannerPath.fromPathFile(pathName);
+     * 
+     * return new FollowPathHolonomic(
+     * path,
+     * this::getPose, // Robot pose supplier
+     * this::getChassisSpeeds, // ChassisSpeeds supplier. MUST BE ROBOT RELATIVE
+     * this::setChassisSpeedsAUTO, // Method that will drive the robot given ROBOT
+     * RELATIVE ChassisSpeeds
+     * new HolonomicPathFollowerConfig( // HolonomicPathFollowerConfig, this should
+     * likely live in your
+     * // Constants class
+     * PathPlannerConstants.TRANSLATION_PID, // Translation PID constants
+     * PathPlannerConstants.ROTATION_PID, // Rotation PID constants
+     * DriveConstants.MAX_MODULE_VELOCITY, // Max module speed, in m/s
+     * DriveConstants.DRIVE_BASE_RADIUS, // Drive base radius in meters. Distance
+     * from robot center to
+     * // furthest module.
+     * new ReplanningConfig() // Default path replanning config. See the API for the
+     * options here
+     * ),
+     * () -> {
+     * // Boolean supplier that controls when the path will be mirrored for the red
+     * // alliance
+     * // This will flip the path being followed to the red side of the field.
+     * // THE ORIGIN WILL REMAIN ON THE BLUE SIDE
+     * 
+     * var alliance = DriverStation.getAlliance();
+     * if (alliance.isPresent()) {
+     * return alliance.get() == DriverStation.Alliance.Red;
+     * }
+     * return false;
+     * },
+     * this // Reference to this subsystem to set requirements
+     * );
+     * }
+     * 
+     * public PathPlannerPath generateOTFPath(Translation2d... pathPoints) {
+     * // Create the path using the bezier points created above
+     * PathPlannerPath path = new PathPlannerPath(
+     * List.of(pathPoints),
+     * new PathConstraints(3.0, 3.0, 2 * Math.PI, 4 * Math.PI), // The constraints
+     * for this path. If using a
+     * // differential drivetrain, the angular
+     * // constraints have no effect.
+     * new GoalEndState(0.0, Rotation2d.fromDegrees(-90)) // Goal end state. You can
+     * set a holonomic rotation
+     * // here. If using a differential drivetrain, the
+     * // rotation will have no effect.
+     * );
+     * 
+     * // Prevent the path from being flipped if the coordinates are already correct
+     * path.preventFlipping = true;
+     * 
+     * return path;
+     * }
+     */
 }

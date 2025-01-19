@@ -7,8 +7,11 @@ package frc.robot.subsystems;
 import com.revrobotics.*;
 
 import com.revrobotics.spark.SparkMax;
-import com.revrobotics.spark.config.SparkBaseConfig.IdleMode;
+import com.revrobotics.spark.SparkAbsoluteEncoder;
+import com.revrobotics.spark.SparkRelativeEncoder;
+import com.revrobotics.spark.config.AbsoluteEncoderConfig;
 import com.revrobotics.spark.config.SparkMaxConfig;
+import com.revrobotics.spark.config.SparkBaseConfig.IdleMode;
 import com.revrobotics.spark.SparkBase.ResetMode;
 import com.revrobotics.spark.SparkBase.PersistMode;
 import com.revrobotics.spark.SparkLowLevel.MotorType;
@@ -49,7 +52,7 @@ public class SwerveModule {
     private static int moduleNumber = 0;
     int thisModuleNumber;
 
-    SlewRateLimiter turnratelimiter = new SlewRateLimiter(4.d);
+    SlewRateLimiter turnratelimiter = new SlewRateLimiter(4.d); //Where
 
     public SwerveModule(int steerCanID, int driveCanID, int absoluteEncoderPort, double motorOffsetRadians,
             boolean isAbsoluteEncoderReversed, boolean motorReversed) {
@@ -63,11 +66,14 @@ public class SwerveModule {
         steerMotorConfig.idleMode(SparkMaxConfig.IdleMode.kBrake);
         steerMotorConfig.inverted(false); 
 
+        driveMotor.configure(driveMotorConfig, ResetMode.kResetSafeParameters, PersistMode.kNoPersistParameters); //new for 2025
+        steerMotor.configure(steerMotorConfig, ResetMode.kResetSafeParameters, PersistMode.kNoPersistParameters); //new for 2025
+
         this.motor_inv = motorReversed;
         driveMotorEncoder = driveMotor.getEncoder();
         steerMotorEncoder = steerMotor.getEncoder();
 
-        // Reset encoder offsets possibly set in Tuner X
+        // TO DO: Reset encoder offsets possibly set in Tuner X
         absoluteEncoder = new com.ctre.phoenix6.hardware.CANcoder(absoluteEncoderPort);
         com.ctre.phoenix6.configs.CANcoderConfiguration cfg = new com.ctre.phoenix6.configs.CANcoderConfiguration();
         cfg.MagnetSensor = new com.ctre.phoenix6.configs.MagnetSensorConfigs();
@@ -78,22 +84,16 @@ public class SwerveModule {
         this.motorOffsetRadians = motorOffsetRadians;
         this.isAbsoluteEncoderReversed = isAbsoluteEncoderReversed;
 
-        //need to put back in later
-        // driveMotorEncoder.setPositionConversionFactor(SwerveModuleConstants.DRIVE_ROTATION_TO_METER);
-        // driveMotorEncoder.setVelocityConversionFactor(SwerveModuleConstants.DRIVE_METERS_PER_MINUTE);
-
-        // steerMotorEncoder.setPositionConversionFactor(SwerveModuleConstants.STEER_ROTATION_TO_RADIANS);
-        // steerMotorEncoder.setVelocityConversionFactor(SwerveModuleConstants.STEER_RADIANS_PER_MINUTE);
-
         steerPID = new PIDController(SwerveModuleConstants.MODULE_KP, 0, SwerveModuleConstants.MODULE_KD);
         steerPID.enableContinuousInput(-Math.PI, Math.PI);
 
         thisModuleNumber = moduleNumber;
         moduleNumber++;
-
+        
         resetEncoders();
     }
 
+    //Update the simulation encoder
     public void simulate_step() {
         driveEncSim += 0.02 * driveMotor.get() * (DriveConstants.MAX_MODULE_VELOCITY);
         steerEncSim += 0.02 * steerMotor.get() * (10.0);
@@ -102,21 +102,21 @@ public class SwerveModule {
     public double getDrivePosition() {
         if (Robot.isSimulation())
             return driveEncSim;
-        return driveMotorEncoder.getPosition();
+        return driveMotorEncoder.getPosition()*SwerveModuleConstants.DRIVE_ROTATION_TO_METER;
     }
 
     public double getDriveVelocity() {
-        return driveMotorEncoder.getVelocity();
+        return driveMotorEncoder.getVelocity()*SwerveModuleConstants.DRIVE_METERS_PER_MINUTE;
     }
 
     public double getSteerPosition() {
         if (Robot.isSimulation())
             return steerEncSim;
-        return steerMotorEncoder.getPosition();
+        return steerMotorEncoder.getPosition()*SwerveModuleConstants.STEER_ROTATION_TO_RADIANS;
     }
 
     public double getSteerVelocity() {
-        return steerMotorEncoder.getVelocity();
+        return steerMotorEncoder.getVelocity()*SwerveModuleConstants.STEER_RADIANS_PER_MINUTE;
     }
 
     public double getAbsoluteEncoderPosition() {
@@ -137,7 +137,7 @@ public class SwerveModule {
 
     public SwerveModulePosition getModulePosition() {
         return new SwerveModulePosition(getDrivePosition(),
-                new Rotation2d(-getSteerPosition()).rotateBy(DriveConstants.NAVX_ANGLE_OFFSET.times(-1)));
+                new Rotation2d(-getSteerPosition()).rotateBy(DriveConstants.PIGEON_ANGLE_OFFSET.times(-1)));
     }
 
     public void setModuleStateRaw(SwerveModuleState state) {
@@ -156,6 +156,7 @@ public class SwerveModule {
         SmartDashboard.putNumber("Drive" + thisModuleNumber, drive_command);
     }
 
+    //Slight drive to keep the wheels in place. Otherwise WPILib will default to moving the wheels straight
     public void setModuleState(SwerveModuleState state) {
         if (Math.abs(state.speedMetersPerSecond) < 0.001) {
             stop();

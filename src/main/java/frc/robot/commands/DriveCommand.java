@@ -32,7 +32,6 @@ public class DriveCommand extends Command {
   /** Creates a new DriveCommand. */
     private final SwerveSubsystem swerveSubsystem;
     private final XboxController xbox;
-    private final CommandJoystick joystick;
 
     private SlewRateLimiter dsratelimiter = new SlewRateLimiter(4);
 
@@ -52,7 +51,6 @@ public class DriveCommand extends Command {
     public DriveCommand(SwerveSubsystem swerveSubsystem, XboxController xbox) {
         this.swerveSubsystem = swerveSubsystem;
         this.xbox = xbox;
-        joystick = null;
 
         rotationController.enableContinuousInput(-Math.PI, Math.PI);
 
@@ -61,23 +59,14 @@ public class DriveCommand extends Command {
         addRequirements(swerveSubsystem);
     }
 
-    public DriveCommand(SwerveSubsystem swerveSubsystem, CommandJoystick joystick) {
-        this.swerveSubsystem = swerveSubsystem;
-        this.joystick = joystick;
-        xbox = null;
-
-        rotationController.enableContinuousInput(-Math.PI, Math.PI);
-
-        dsratelimiter.reset(SLOWMODE_MULT);
-
-        addRequirements(swerveSubsystem);
-        
+    //returns the value in a range
+    double clamp(double v, double min, double max) {
+        // v = value entereds
+        return (v < min) ? min : (v > max ? max : v);
     }
 
-    double clamp(double v, double mi, double ma) {
-        return (v < mi) ? mi : (v > ma ? ma : v);
-    }
-
+    //Fancy deadzone (so you can still approach the max value)
+    //For a translational input (x- and y-axis)
     public Translation2d DeadBand(Translation2d input, double deadzone) {
         double mag = input.getNorm();
         Translation2d norm = input.div(mag);
@@ -92,6 +81,7 @@ public class DriveCommand extends Command {
         }
     }
 
+    //Fancy deadband for a single number input (Z-axis)
     public double DeadBand(double input, double deadband) {
         return Math.abs(input) < deadband ? 0.0 : (input - Math.signum(input) * deadband) / (1.0 - deadband);
     }
@@ -101,9 +91,9 @@ public class DriveCommand extends Command {
         double xSpeed, ySpeed, zSpeed;
         Translation2d xyRaw;
 
-        xyRaw = new Translation2d(joystick.getX(), joystick.getY());
+        xyRaw = new Translation2d(xbox.getLeftX(), xbox.getLeftY());
         Translation2d xySpeed = DeadBand(xyRaw, 0.5 / 2.f);
-        zSpeed = DeadBand(joystick.getTwist(), 0.25);
+        zSpeed = DeadBand(xbox.getRightX(), 0.25);
         xSpeed = -xySpeed.getX();
         ySpeed = xySpeed.getY();
 
@@ -111,12 +101,14 @@ public class DriveCommand extends Command {
         ySpeed *= DriveConstants.XY_SPEED_LIMIT * DriveConstants.MAX_ROBOT_VELOCITY;
         zSpeed *= DriveConstants.Z_SPEED_LIMIT * DriveConstants.MAX_ROBOT_RAD_VELOCITY;
 
+        //rate limiter so you can accelerate fast without brownouts
         double dmult = dsratelimiter
                 .calculate((DRIVE_MULT - SLOWMODE_MULT) * 1 + SLOWMODE_MULT);
         xSpeed *= dmult;
         ySpeed *= dmult;
         zSpeed *= dmult;
 
+        // Zero heading: if code doesn't work to automatically zero heading
         // if (xbox.getXButton()) {
         //     swerveSubsystem.zeroHeading();
         //     Translation2d pospose = swerveSubsystem.getPose().getTranslation();
@@ -128,12 +120,12 @@ public class DriveCommand extends Command {
         ChassisSpeeds speeds;
 
         // Drive Non Field Oriented
-        if (joystick.button(12).getAsBoolean()) {
+        if (!xbox.getRawButton(5)) {
             
              speeds = ChassisSpeeds.fromFieldRelativeSpeeds(-ySpeed, xSpeed, zSpeed,
                     new Rotation2d(
-                           -swerveSubsystem.getRotation2d().rotateBy(DriveConstants.NAVX_ANGLE_OFFSET).getRadians()));
-        } else if (!joystick.button(12).getAsBoolean()) {
+                           -swerveSubsystem.getRotation2d().rotateBy(DriveConstants.PIGEON_ANGLE_OFFSET).getRadians()));
+        } else if (xbox.getRawButton(5)) {
            speeds = new ChassisSpeeds(-xSpeed, -ySpeed, zSpeed);
         } else {
             // Normal non-field oriented
