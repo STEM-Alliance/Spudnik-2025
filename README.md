@@ -1,6 +1,16 @@
 # 2025 Code
 
-## Comments that start with TO DO indicate a value that needs to be changed or verified
+## Programmer Notes
+Comments that start with TO DO indicate a value that needs to be changed or verified
+
+## Code Structure Notes
+1. Constants.java - Declare variables that will not change here (i.e. CAN IDs)
+2. RobotContainer.java - Declare buttons here under configureBindings()
+3. Subsystems - Methods for this area of the robot are declared here
+    - Subsystems include motor controllers sensors that operate together
+4. Commands - Actions of the robot that run for until the end condition is met
+    - Only one command can use a subsystem at a time
+    - If the action (on a button) only requires one method, see RobotContainer for using an InstantComannd instead
 
 ## Setup
 
@@ -16,24 +26,24 @@
 2. then type `WPILib: Manage`
 3. then go down to `Install New librariers (online)`
 4. Paste the following into the dialog box:
-This link should be for the Pigeons and SparkMax
+5. Repeat steps 1 through 4 for each library
+CTRE 
 `https://maven.ctr-electronics.com/release/com/ctre/phoenix6/latest/Phoenix6-frc2025-latest.json`
+
+SparkMax
 `https://software-metadata.revrobotics.com/REVLib-2025.json`
 
 PathPlanner lib:
 `https://3015rangerrobotics.github.io/pathplannerlib/PathplannerLib.json`
 
-Repeat steps 1 through 3 then paste:
-
-`https://software-metadata.revrobotics.com/REVLib-2025.json`
 
 ## Configure Spark Max Controllers
 
-The SPARK MAX Controllers have a really nice config app and documentation. The documentation can be found here: https://docs.revrobotics.com/sparkmax/gs-sm
+The SPARK MAX Controllers have a really nice config app and documentation. The documentation can be found here: https://docs.revrobotics.com/revlib
 
-The hardware client app can be found here: https://docs.revrobotics.com/sparkmax/rev-hardware-client/getting-started-with-the-rev-hardware-client
+The hardware client app can be found here: https://docs.revrobotics.com/rev-hardware-client 
 
-Connect a USB cable from your PC to the SPARK Max controller. The app will detect this and display the controller. From the app you can program firmware, configure the motor, and configure the CAN ID. **This must be unique from all controllers on the bus.**
+Connect a USB-C cable from your PC to the SPARK Max controller. The app will detect this and display the controller. From the app you can program firmware, configure the motor, and configure the CAN ID. **This must be unique from all controllers on the bus.**
 
 ## Commands
 
