@@ -4,40 +4,28 @@
 
 package frc.robot;
 import com.pathplanner.lib.config.PIDConstants;
-import com.pathplanner.lib.util.GeometryUtil;
-import com.pathplanner.lib.config.*;
-//import com.pathplanner.lib.util.ReplanningConfig;
 
-import edu.wpi.first.math.controller.ArmFeedforward;
-import edu.wpi.first.math.controller.PIDController;
-import edu.wpi.first.math.controller.ProfiledPIDController;
 import edu.wpi.first.math.geometry.Rotation2d;
-import edu.wpi.first.math.geometry.Rotation3d;
-import edu.wpi.first.math.geometry.Transform3d;
 import edu.wpi.first.math.geometry.Translation2d;
-import edu.wpi.first.math.geometry.Translation3d;
 import edu.wpi.first.math.kinematics.SwerveDriveKinematics;
-import edu.wpi.first.math.trajectory.TrapezoidProfile.Constraints;
 import edu.wpi.first.math.util.Units;
-import edu.wpi.first.units.Unit;
 import edu.wpi.first.wpilibj.DriverStation;
 import edu.wpi.first.wpilibj.DriverStation.Alliance;
-import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 
 
 /**
- * The Constants class provides a convenient place for teams to hold robot-wide numerical or boolean
- * constants. This class should not be used for any other purpose. All constants should be declared
- * globally (i.e. public static). Do not put anything functional in this class.
- *
- * <p>It is advised to statically import this class (or one of its inner classes) wherever the
- * constants are needed, to reduce verbosity.
+ * Only declare variables that will not change while the code is running in this class (i.e. CAN IDs)
+ * Variables should be declared as public static final and good practice is to use all capital letters for final variables
+ * 
+ * Access these variables in other files by typing the className.variableName (i.e. SwerveModuleConstants. FL_DRIVE_ID)
  */
 public final class Constants {
   public static class OperatorConstants {
-    public static final int kDriverControllerPort = 0;
-    public static final int kAuxControllerPort = 1;
+    //these are the ports of the Driver Station each xbox controller should be assigned to
+    public static final int DRIVER_CONTROLLER_PORT = 0;
+    public static final int AUX_CONTROLLER_PORT = 1;
   }
+
   public static final class FieldConstants {
     public static final double GRAVITY = 9.81; 
 
@@ -54,20 +42,20 @@ public final class Constants {
     public static final int PIGEON_ID = 4; //TO DO
 
     public static final double WHEEL_DIAMETER = Units.inchesToMeters(4);
-    public static final double STEERING_GEAR_RATIO = 1 / 12.8; //TO DO
+    public static final double STEERING_GEAR_RATIO = 1 / 12.8; //TO DO: Ask Ian
     // This is for L1 SDS Modules
-    public static final double DRIVE_GEAR_RATIO = 8.14; //TO Do
+    public static final double DRIVE_GEAR_RATIO = 8.14; //TO Do: Ask Ian
 
     public static final double DRIVE_ROTATION_TO_METER = DRIVE_GEAR_RATIO * Math.PI * WHEEL_DIAMETER;
     public static final double STEER_ROTATION_TO_RADIANS = STEERING_GEAR_RATIO * Math.PI * 2d;
     public static final double DRIVE_METERS_PER_MINUTE = DRIVE_ROTATION_TO_METER / 60d;
     public static final double STEER_RADIANS_PER_MINUTE = STEER_ROTATION_TO_RADIANS / 60d;
 
-    // TODO: Tune for modules!
+    // TO DO: Tune for modules!
     public static final double MODULE_KP = 0.3048; //TO DO
     public static final double MODULE_KD = 0.0066806; //TO DO
 
-    // TO DO: change the reversed to true if needed
+    // TO DO: change the reversed to true if needed for each module
     // --------- Front Left Module --------- \\
     public static final int FL_DRIVE_ID = 2;
     public static final int FL_STEER_ID = 3;
@@ -99,12 +87,12 @@ public final class Constants {
     // -0.401123
     public static final double BL_OFFSET_RADIANS = Units.rotationsToRadians(-0.401123) + Math.PI / 2; //TO DO: find offset
     public static final boolean BL_ABSOLUTE_ENCODER_REVERSED = false;
-    public static final boolean BL_MOTOR_REVERSED = false;
+    public static final boolean BL_MOTOR_REVERSED = false; //NOTE: this was true before
 
   }
 
   public static class DriveConstants {
-    // TODO: Update max vel 
+    // TO DO: Update max vel 
     public static final double MAX_MODULE_VELOCITY = 5.21; //TO DO: Measure
     public static final double MAX_ROBOT_VELOCITY = 5.21; //TO DO: Measure
     public static final double MAX_ROBOT_RAD_VELOCITY = 12.0; // Approx. Measured rads/sec
@@ -112,9 +100,9 @@ public final class Constants {
     //Updated based on robot
     public static final double TRACK_WIDTH = Units.inchesToMeters(15); //Distance between center of the wheel to center of wheel
     public static final double WHEEL_BASE = Units.inchesToMeters(15); 
-    // TODO: Set angle offset relative to front of robot
+    // TO DO: Set angle offset relative to front of robot
     public static final Rotation2d PIGEON_ANGLE_OFFSET = Rotation2d.fromDegrees(0); //doesn't matter if pigeon is not rotated
-    // TODO: For PPLib, max radius of drivebase
+    // TO DO: For PPLib, max radius of drivebase
     public static final double DRIVE_BASE_RADIUS = Units.inchesToMeters(15); //for old pathplanner
 
     //Changes which modules get what commands
@@ -135,7 +123,7 @@ public final class Constants {
     public static final double Z_SPEED_LIMIT = 0.5; //TO DO: Change after inital testing
   }
   public static final class PathPlannerConstants {
-    //TODO: Change based on tuning
+    //TO DO: Change based on tuning
     public static final PIDConstants TRANSLATION_PID = new PIDConstants(5, 0, 0); //could put d to 0.2
     public static final PIDConstants ROTATION_PID = new PIDConstants(5, 0, 0);
   }

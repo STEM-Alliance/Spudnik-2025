@@ -4,32 +4,23 @@
 
 package frc.robot.subsystems;
 
-import com.revrobotics.*;
-
-import com.revrobotics.spark.SparkMax;
-import com.revrobotics.spark.SparkAbsoluteEncoder;
-import com.revrobotics.spark.SparkRelativeEncoder;
-import com.revrobotics.spark.config.AbsoluteEncoderConfig;
-import com.revrobotics.spark.config.SparkMaxConfig;
-import com.revrobotics.spark.config.SparkBaseConfig.IdleMode;
-import com.revrobotics.spark.SparkBase.ResetMode;
+import com.revrobotics.RelativeEncoder;
 import com.revrobotics.spark.SparkBase.PersistMode;
+import com.revrobotics.spark.SparkBase.ResetMode;
 import com.revrobotics.spark.SparkLowLevel.MotorType;
+import com.revrobotics.spark.SparkMax;
+import com.revrobotics.spark.config.SparkMaxConfig;
 
 import edu.wpi.first.math.controller.PIDController;
 import edu.wpi.first.math.filter.SlewRateLimiter;
 import edu.wpi.first.math.geometry.Rotation2d;
-import edu.wpi.first.math.kinematics.*;
+import edu.wpi.first.math.kinematics.SwerveModulePosition;
+import edu.wpi.first.math.kinematics.SwerveModuleState;
 import edu.wpi.first.math.util.Units;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
+import frc.robot.Constants.DriveConstants;
+import frc.robot.Constants.SwerveModuleConstants;
 import frc.robot.Robot;
-import frc.robot.Constants.*;
-//import com.revrobotics.sim.SparkMaxAlternateEncoderSim;
-import com.ctre.phoenix6.configs.MotorOutputConfigs;
-import com.ctre.phoenix6.configs.TalonFXConfigurator;
-import com.ctre.phoenix6.hardware.TalonFX;
-import com.ctre.phoenix6.signals.InvertedValue;
-import com.ctre.phoenix6.signals.NeutralModeValue;
 
 public class SwerveModule {
     private final SparkMax driveMotor;
@@ -52,14 +43,14 @@ public class SwerveModule {
     private static int moduleNumber = 0;
     int thisModuleNumber;
 
-    SlewRateLimiter turnratelimiter = new SlewRateLimiter(4.d); //Where
+    SlewRateLimiter turnratelimiter = new SlewRateLimiter(4.d); 
 
     public SwerveModule(int steerCanID, int driveCanID, int absoluteEncoderPort, double motorOffsetRadians,
             boolean isAbsoluteEncoderReversed, boolean motorReversed) {
         driveMotor = new SparkMax(driveCanID, MotorType.kBrushless);
         SparkMaxConfig driveMotorConfig = new SparkMaxConfig();
         driveMotorConfig.idleMode(SparkMaxConfig.IdleMode.kBrake);
-        driveMotorConfig.inverted(true); 
+        driveMotorConfig.inverted(false); //NOTE: this was true before
 
         steerMotor = new SparkMax(steerCanID, MotorType.kBrushless);
         SparkMaxConfig steerMotorConfig = new SparkMaxConfig();
@@ -93,28 +84,46 @@ public class SwerveModule {
         resetEncoders();
     }
 
-    //Update the simulation encoder
+    /**
+     * Updates the siulation encoder
+     */
     public void simulate_step() {
         driveEncSim += 0.02 * driveMotor.get() * (DriveConstants.MAX_MODULE_VELOCITY);
         steerEncSim += 0.02 * steerMotor.get() * (10.0);
     }
 
+    /**
+     * Returns drive poisiton in meters
+     * @return
+     */
     public double getDrivePosition() {
         if (Robot.isSimulation())
             return driveEncSim;
         return driveMotorEncoder.getPosition()*SwerveModuleConstants.DRIVE_ROTATION_TO_METER;
     }
 
+    /**
+     * Returns drive velocity in meters per minute
+     * @return
+     */
     public double getDriveVelocity() {
         return driveMotorEncoder.getVelocity()*SwerveModuleConstants.DRIVE_METERS_PER_MINUTE;
     }
 
+    /**
+     * Returns steer position in radians
+     * @return
+     */
     public double getSteerPosition() {
         if (Robot.isSimulation())
             return steerEncSim;
         return steerMotorEncoder.getPosition()*SwerveModuleConstants.STEER_ROTATION_TO_RADIANS;
     }
 
+    /**
+     * Returns steer velocity in Radians per minute
+     * @return
+     */
     public double getSteerVelocity() {
         return steerMotorEncoder.getVelocity()*SwerveModuleConstants.STEER_RADIANS_PER_MINUTE;
     }
@@ -126,6 +135,10 @@ public class SwerveModule {
         return angle * (isAbsoluteEncoderReversed ? -1.0 : 1.0);
     }
 
+    /**
+     * Drive motors are set to position zero
+     * Steer motors set to the absolute encoder position
+     */
     public void resetEncoders() {
         driveMotorEncoder.setPosition(0);
         steerMotorEncoder.setPosition(getAbsoluteEncoderPosition());
@@ -141,6 +154,7 @@ public class SwerveModule {
     }
 
     public void setModuleStateRaw(SwerveModuleState state) {
+        //in 2026, use the instance method instead of optimize which will be removed
         state = SwerveModuleState.optimize(state, new Rotation2d(getSteerPosition()));
         double drive_command = state.speedMetersPerSecond / DriveConstants.MAX_MODULE_VELOCITY;
         driveMotor.set(drive_command * (motor_inv ? -1.0 : 1.0));

@@ -4,26 +4,16 @@
 
 package frc.robot.commands;
 
-import edu.wpi.first.wpilibj2.command.Command;
-
 import edu.wpi.first.math.controller.PIDController;
 import edu.wpi.first.math.filter.SlewRateLimiter;
-import edu.wpi.first.math.geometry.*;
-import edu.wpi.first.math.kinematics.*;
-
-import edu.wpi.first.wpilibj.*;
-import edu.wpi.first.wpilibj2.command.button.CommandJoystick;
-import frc.robot.Constants.*;
+import edu.wpi.first.math.geometry.Rotation2d;
+import edu.wpi.first.math.geometry.Translation2d;
+import edu.wpi.first.math.kinematics.ChassisSpeeds;
+import edu.wpi.first.math.kinematics.SwerveModuleState;
+import edu.wpi.first.wpilibj.XboxController;
+import edu.wpi.first.wpilibj2.command.Command;
+import frc.robot.Constants.DriveConstants;
 import frc.robot.subsystems.SwerveSubsystem;
-// import frc.robot.subsystems.SwerveSubsystem.RotationStyle;
-// import org.opencv.core.RotatedRect;
-// import edu.wpi.first.math.MathUtil;
-// import edu.wpi.first.wpilibj.DriverStation.Alliance;
-// import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
-// import edu.wpi.first.wpilibj2.command.Command;
-// import edu.wpi.first.math.trajectory.TrapezoidProfile;
-// import edu.wpi.first.math.util.Units;
-// import edu.wpi.first.math.controller.ProfiledPIDController;
 
 
 
@@ -41,13 +31,6 @@ public class DriveCommand extends Command {
     private double DRIVE_MULT = 1.0;
     private final double SLOWMODE_MULT = 0.25;
 
-    private enum DriveState {
-        Free,
-        Locked,
-    };
-
-    private DriveState state = DriveState.Free;
-
     public DriveCommand(SwerveSubsystem swerveSubsystem, XboxController xbox) {
         this.swerveSubsystem = swerveSubsystem;
         this.xbox = xbox;
@@ -59,14 +42,22 @@ public class DriveCommand extends Command {
         addRequirements(swerveSubsystem);
     }
 
-    //returns the value in a range
-    double clamp(double v, double min, double max) {
+    /**
+     * Returns a value witin a range
+     * @param value, min, max
+     */
+    double clamp(double value, double min, double max) {
         // v = value entereds
-        return (v < min) ? min : (v > max ? max : v);
+        return (value < min) ? min : (value > max ? max : value);
     }
 
-    //Fancy deadzone (so you can still approach the max value)
-    //For a translational input (x- and y-axis)
+    /**
+     * Fancy deadzone (so you can still approach the max value)
+     * For a translational input (x- and y-axis)
+     * @param input
+     * @param deadzone
+     * @return
+     */
     public Translation2d DeadBand(Translation2d input, double deadzone) {
         double mag = input.getNorm();
         Translation2d norm = input.div(mag);
@@ -81,7 +72,12 @@ public class DriveCommand extends Command {
         }
     }
 
-    //Fancy deadband for a single number input (Z-axis)
+    /**
+     * Fancy deadband for a single number input (Z-axis)
+     * @param input
+     * @param deadband
+     * @return
+     */
     public double DeadBand(double input, double deadband) {
         return Math.abs(input) < deadband ? 0.0 : (input - Math.signum(input) * deadband) / (1.0 - deadband);
     }
@@ -119,6 +115,7 @@ public class DriveCommand extends Command {
 
         ChassisSpeeds speeds;
 
+        //do not declare buttons this way
         // Drive Non Field Oriented
         if (!xbox.getRawButton(5)) {
             

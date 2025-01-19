@@ -4,21 +4,11 @@
 
 package frc.robot.subsystems;
 
-import java.util.List;
-
+import com.ctre.phoenix6.StatusSignal;
 import com.ctre.phoenix6.hardware.Pigeon2;
 import com.pathplanner.lib.auto.AutoBuilder;
-import com.pathplanner.lib.auto.NamedCommands;
-//import com.pathplanner.lib.commands.FollowPathHolonomic;
-import com.pathplanner.lib.commands.PathPlannerAuto;
-import com.pathplanner.lib.config.PIDConstants;
 import com.pathplanner.lib.config.RobotConfig;
 import com.pathplanner.lib.controllers.PPHolonomicDriveController;
-import com.pathplanner.lib.path.GoalEndState;
-import com.pathplanner.lib.path.PathConstraints;
-import com.pathplanner.lib.path.PathPlannerPath;
-//import com.pathplanner.lib.util.HolonomicPathFollowerConfig;
-//import com.pathplanner.lib.util.ReplanningConfig;
 
 import edu.wpi.first.math.estimator.SwerveDrivePoseEstimator;
 import edu.wpi.first.math.geometry.Pose2d;
@@ -29,23 +19,21 @@ import edu.wpi.first.math.kinematics.SwerveDriveKinematics;
 import edu.wpi.first.math.kinematics.SwerveModulePosition;
 import edu.wpi.first.math.kinematics.SwerveModuleState;
 import edu.wpi.first.math.util.Units;
+import edu.wpi.first.units.measure.Angle;
 import edu.wpi.first.wpilibj.DriverStation;
 import edu.wpi.first.wpilibj.DriverStation.Alliance;
-import edu.wpi.first.wpilibj.SPI;
 import edu.wpi.first.wpilibj.smartdashboard.Field2d;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
-import edu.wpi.first.wpilibj2.command.Command;
-import edu.wpi.first.wpilibj2.command.PrintCommand;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
 import frc.robot.Constants;
 import frc.robot.Constants.DriveConstants;
 import frc.robot.Constants.FieldConstants;
 import frc.robot.Constants.PathPlannerConstants;
-// import frc.robot.Constants.PathPlannerConstants;
 import frc.robot.Constants.SwerveModuleConstants;
 import frc.robot.Robot;
 
 public class SwerveSubsystem extends SubsystemBase {
+    //All of the parameters for the swerve modules should be declared in Constants.java
     SwerveModule frontLeft = new SwerveModule(SwerveModuleConstants.FL_STEER_ID, SwerveModuleConstants.FL_DRIVE_ID,
             SwerveModuleConstants.FL_ABSOLUTE_ENCODER_PORT, SwerveModuleConstants.FL_OFFSET_RADIANS,
             SwerveModuleConstants.FL_ABSOLUTE_ENCODER_REVERSED,
@@ -77,7 +65,7 @@ public class SwerveSubsystem extends SubsystemBase {
      * private RotationStyle rotationStyle = RotationStyle.Driver;
      */
 
-    public final Pigeon2 pigeon = new Pigeon2(Constants.SwerveModuleConstants.PIGEON_ID);
+    public final Pigeon2 pigeon = new Pigeon2(Constants.SwerveModuleConstants.PIGEON_ID); //initializes the gyro
     private double pigeonSim;
 
     private ChassisSpeeds lastChassisSpeeds = new ChassisSpeeds();
@@ -86,7 +74,7 @@ public class SwerveSubsystem extends SubsystemBase {
 
     boolean isalliancereset = false;
 
-    // TODO: Properly set starting pose
+    // TO DO: Properly set starting pose
     public final SwerveDrivePoseEstimator odometry = new SwerveDrivePoseEstimator(DriveConstants.KINEMATICS,
             getRotation2d(),
             getModulePositions(), new Pose2d());
@@ -136,6 +124,7 @@ public class SwerveSubsystem extends SubsystemBase {
     @Override
     public void periodic() {
 
+        //Automatically identifies the alliance color
         if (!isalliancereset && DriverStation.getAlliance().isPresent()) {
             Translation2d pospose = getPose().getTranslation();
             odometry.resetPosition(getRotation2d(), getModulePositions(),
@@ -160,7 +149,7 @@ public class SwerveSubsystem extends SubsystemBase {
         });
     }
     /**
-     * kljkldkl
+     * Sets the heading to the side of the field the robot is currently facing
      */
     public void zeroHeading() {
         setHeading(0);
@@ -175,7 +164,7 @@ public class SwerveSubsystem extends SubsystemBase {
             pigeonSim = Units.degreesToRadians(deg);
         }
  
-        double error = deg - pigeon.getAngle();
+        double error = deg - pigeon.getAngle(); //in 2026, getAngle will be removed so look into getYaw()
         double new_adjustment = pigeon.getAngle() + error;
         pigeon.setYaw(new_adjustment);
     }
@@ -186,7 +175,7 @@ public class SwerveSubsystem extends SubsystemBase {
     }
 
     public void resetOdometry(Pose2d pose) {
-        // TODO: TEST
+        // TO DO: TEST
         setHeading(Units.radiansToDegrees(pose.getRotation().times(-1.0).getRadians()
                 + (FieldConstants.getAlliance() == Alliance.Red ? Math.PI : 0.0)));
 
@@ -230,6 +219,10 @@ public class SwerveSubsystem extends SubsystemBase {
         setModules(states);
     }
 
+    /**
+     * Sets the wheel position to form an X so the robot can't be pushed
+     * Helpful for resisting defense while place game pieces
+     */
     public void setXstance() {
         frontLeft.setModuleStateRaw(new SwerveModuleState(0,
                 Rotation2d.fromDegrees(45)));
